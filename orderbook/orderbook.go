@@ -5,6 +5,12 @@ import (
 	"time"
 
 )
+type Match struct {
+	Ask        *Order
+	Bid        *Order
+	SizeFilled float64
+	Price      float64
+}
 
 type Order struct {
 	ID        int64
@@ -15,9 +21,9 @@ type Order struct {
 	Timestamp int64
 }
 
-func NewOrder(bid bool, size float64, userID int64) *Order {
+func NewOrder(bid bool, size float64) *Order {
 	return &Order{
-		UserID:    userID,
+		// UserID:    userID,
 		// ID:        int64(rand.Intn(10000000)),
 		Size:      size,
 		Bid:       bid,
@@ -42,6 +48,9 @@ func NewLimit(price float64) *Limit {
 	}
 }
 
+// func (l *Limit) String() string {
+// 	return  fmt.Sprintf("[price: %2f | volume: %2f]", l.Price, l.TotalVolume)
+// }
 
 func (l *Limit) AddOrder(o *Order) {
 	o.Limit = l
@@ -63,71 +72,10 @@ func (l *Limit) DeleteOrder(o *Order) {
 	// sort.Sort(l.Orders)
 }
 
-// func (l *Limit) Fill(o *Order) []Match {
-// 	var (
-// 		matches        []Match
-// 		ordersToDelete []*Order
-// 	)
-
-// 	for _, order := range l.Orders {
-// 		if o.IsFilled() {
-// 			break
-// 		}
-
-// 		match := l.fillOrder(order, o)
-// 		matches = append(matches, match)
-
-// 		l.TotalVolume -= match.SizeFilled
-
-// 		if order.IsFilled() {
-// 			ordersToDelete = append(ordersToDelete, order)
-// 		}
-// 	}
-
-// 	for _, order := range ordersToDelete {
-// 		l.DeleteOrder(order)
-// 	}
-
-// 	return matches
-// }
-
-// func (l *Limit) fillOrder(a, b *Order) Match {
-// 	var (
-// 		bid        *Order
-// 		ask        *Order
-// 		sizeFilled float64
-// 	)
-
-// 	if a.Bid {
-// 		bid = a
-// 		ask = b
-// 	} else {
-// 		bid = b
-// 		ask = a
-// 	}
-
-// 	if a.Size >= b.Size {
-// 		a.Size -= b.Size
-// 		sizeFilled = b.Size
-// 		b.Size = 0.0
-// 	} else {
-// 		b.Size -= a.Size
-// 		sizeFilled = a.Size
-// 		a.Size = 0.0
-// 	}
-
-// 	return Match{
-// 		Bid:        bid,
-// 		Ask:        ask,
-// 		SizeFilled: sizeFilled,
-// 		Price:      l.Price,
-// 	}
-// }
-
 
 type Orderbook struct {
-	asks []*Limit
-	bids []*Limit
+	Asks []*Limit
+	Bids []*Limit
 
 	// Trades []*Trade
 
@@ -139,8 +87,8 @@ type Orderbook struct {
 
 func NewOrderbook() *Orderbook {
 	return &Orderbook{
-		asks:      []*Limit{},
-		bids:      []*Limit{},
+		Asks:      []*Limit{},
+		Bids:      []*Limit{},
 		// Trades:    []*Trade{},
 		AskLimits: make(map[float64]*Limit),
 		BidLimits: make(map[float64]*Limit),
@@ -148,4 +96,35 @@ func NewOrderbook() *Orderbook {
 	}
 }
 
-//24.29
+
+func (ob *Orderbook) PlaceOrder(price float64, o *Order)[] Match {
+	if o.Size > 0.0 {
+		ob.add(price, o)
+	}
+
+	return []Match{}
+}
+
+func (ob *Orderbook) add(price float64, o *Order){
+	var limit *Limit
+
+	if o.Bid {
+		limit = ob.BidLimits[price]
+	} else {
+		limit = ob.AskLimits[price]
+	}
+
+	if limit == nil {
+		limit = NewLimit(price)
+		limit.AddOrder(o)
+
+		if o.Bid {
+			ob.Bids = append(ob.Bids, limit)
+			ob.BidLimits[price] = limit
+		} else {
+			ob.Asks =  append(ob.Asks, limit)
+			ob.AskLimits[price] = limit
+		}
+
+	}
+}
